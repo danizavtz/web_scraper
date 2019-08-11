@@ -1,70 +1,55 @@
 import os
 import requests
-from bs4 import BeautifulSoup
-from urlparse import urljoin
-from dotenv import load_dotenv
+import time
 import xlwt
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
 load_dotenv()
 
-
-base_url = os.getenv('BASE_URL')
-
-def output(filename, list1, list2, x, y, z):
+def outputXlsx(lista1, lista2):
     book = xlwt.Workbook()
-    sh = book.add_sheet('lista')
+    sheet1 = book.add_sheet("PesquisaPreco1")
+ 
+    sheet1.write(0, 0, "Nome")
+    sheet1.write(0, 1, "Preço")
+    col = 1
+    for item in lista1:
+        sheet1.write(col, 0, item)
+        sheet1.write(col, 1, lista2[col-1])
+        col += 1
+    book.save("planilha.xls")
 
-    variables = [x, y, z]
-    w_desc = 'id'
-    x_desc = 'Nome'
-    y_desc = 'preco'
-    z_desc = 'descricao'
-    desc = [w_desc, x_desc, y_desc, z_desc]
+def procurarClassesHtml(domhtml, classehtml):
+    lista = list()
+    elementos = domhtml.find_elements_by_class_name(classehtml)
+    for item in elementos:
+        lista.append(item.text)
+    return lista
 
-    col1_name = 'Stimulus Time'
-    col2_name = 'Reaction Time'
-
-    #You may need to group the variables together
-    #for n, (v_desc, v) in enumerate(zip(desc, variables)):
-    for n, v_desc, v in enumerate(zip(desc, variables)):
-        sh.write(n, 0, v_desc)
-        sh.write(n, 1, v)
-
-    n+=1
-
-    sh.write(n, 0, col1_name)
-    sh.write(n, 1, col2_name)
-
-    for m, e1 in enumerate(list1, n+1):
-        sh.write(m, 0, e1)
-
-    for m, e2 in enumerate(list2, n+1):
-        sh.write(m, 1, e2)
-
-    book.save(filename)
-
-def procurarClassesNome(domhtml):
-    domhtml.find_all(class="nm-product-name")
-
-def procurarClassesPreco(domhtml):
-    domhtml.find_all(class="nm-price-value")
-
-
-def procurarIdProduto(domhtml):
-    domhtml.find_all(class="nm-product-item  price-api-success")
-
-def encontrarProximaPagina(domhtml):
-    domhtml.find_all(class_='neemu-pagination-next')
-    fullurl = baseurl.join(nextpagelinks[0].select('a')[0].get('href'))
-
-    #inserir navegação para próxima página.
-
-def chamarProximaPagina(fullurl):
-    page = requests.get(fullurl)
+def encontrarProximaPagina(currentPage):
+    page = requests.get(currentPage)
+    soup = BeautifulSoup(page.content, 'html.parser')
+    nextpagelinks = soup.find_all(class_='neemu-pagination-next')
+    fullurl = os.getenv('BASE_URL') + str(nextpagelinks[0].select('a')[0].get('href'))
+    return fullurl
 
 
 def main():
-    page = requests.get(URL_REQUEST)
-    soup = BeautifulSoup(page.content, 'html.parser')
+    #faz o primeiro request
+    driver = webdriver.Firefox()
+    driver.get(os.getenv('URL_REQUEST'))
+    proxima = encontrarProximaPagina(os.getenv('URL_REQUEST'))
+    nomes = list()
+    precos = list()
+    for i in range(int(os.getenv('NUMERO_PAGINAS'))):
+        nomes.extend(procurarClassesHtml(driver, 'nm-product-name'))
+        precos.extend(procurarClassesHtml(driver, 'nm-price-value'))
+        proxima = encontrarProximaPagina(proxima)
+        driver.get(proxima)
 
+    outputXlsx(nomes, precos)
+    
 if __name__ == "__main__":
     main()

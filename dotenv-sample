@@ -1,2 +1,3 @@
 BASE_URL=https:
-URL_REQUEST=https://buscando2.extra.com.br/busca?q=pet+shop'
+URL_REQUEST=
+NUMERO_PAGINAS=20
