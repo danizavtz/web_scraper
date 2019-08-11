@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.firefox.options import Options
+
 load_dotenv()
 
 def outputXlsx(lista1, lista2):
@@ -38,18 +40,29 @@ def encontrarProximaPagina(currentPage):
 
 def main():
     #faz o primeiro request
-    driver = webdriver.Firefox()
-    driver.get(os.getenv('URL_REQUEST'))
-    proxima = encontrarProximaPagina(os.getenv('URL_REQUEST'))
-    nomes = list()
-    precos = list()
-    for i in range(int(os.getenv('NUMERO_PAGINAS'))):
-        nomes.extend(procurarClassesHtml(driver, 'nm-product-name'))
-        precos.extend(procurarClassesHtml(driver, 'nm-price-value'))
-        proxima = encontrarProximaPagina(proxima)
-        driver.get(proxima)
+    try:
+        options = Options()
+        options.headless = True
+        driver = webdriver.Firefox(options=options)
+        driver.set_page_load_timeout(180)
 
-    outputXlsx(nomes, precos)
+        driver.get(os.getenv('URL_REQUEST'))
+        proxima = encontrarProximaPagina(os.getenv('URL_REQUEST'))
+        nomes = list()
+        precos = list()
+        for i in range(int(os.getenv('NUMERO_PAGINAS'))):
+            nomes.extend(procurarClassesHtml(driver, 'nm-product-name'))
+            precos.extend(procurarClassesHtml(driver, 'nm-price-value'))
+            print('Visitando página: {}'.format(proxima))
+            driver.get(proxima)
+            proxima = encontrarProximaPagina(proxima)
+            
+
+        print('Gravando dados na planilha.')
+        outputXlsx(nomes, precos)
+        driver.quit()#fechar o browser
+    except Exception as ex:
+        print('Houve um erro ao executar rotina. Detalhe: {}'.format(ex))
     
 if __name__ == "__main__":
     main()
